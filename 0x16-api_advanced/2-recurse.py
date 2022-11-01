@@ -1,33 +1,35 @@
 #!/usr/bin/python3
-""" recursive function that queries the Reddit API """
+"""
+Querying the Reddit API recursively
+"""
 import requests
-import sys
-after = None
 
 
-def recurse(subreddit, hot_list=[]):
-    """     Args:
-            subreddit: subreddit name
-            hot_list: list of hot titles in subreddit
-            after: last hot_item appended to hot_list
-        Returns:
-            a list containing the titles of all hot articles for the subreddit
-            or None if queried subreddit is invalid """
-        global after
-        headers = {'User-Agent': 'xica369'}
-        url = "https://www.reddit.com/r/{}/hot.json".format(subreddit)
-        parameters = {'after': after}
-        response = requests.get(url, headers=headers, allow_redirects=False,
-                                params=parameters)
-        
-        if response.status_code == 200:
-            next_ = response.json().get('data').get('after')
-            if next_ is not None:
-                after = next_
-                recurse(subreddit, hot_list)
-            list_titles = response.json().get('data').get('children')
-            for title_ in list_titles:
-                hot_list.append(title_.get('data').get('title'))
+def recurse(subreddit, hot_list=[], after=None):
+    if type(subreddit) is not str:
+        return None
+    sub = subreddit
+    api_url = "https://api.reddit.com/r/{}/hot?after={}".format(sub, after)
+    headers = {'user-agent': 'safari:holberton/0.1.0'}
+    response = requests.get(api_url, headers=headers)
+    if response.status_code == 200:
+        hot_posts = response.json()["data"]["children"]
+        after = response.json()["data"]["after"]
+        if after is None:
+            hot_list = titles(hot_posts, len(hot_posts))
             return hot_list
-        else:
-            return (None)
+        hot_list.append(recurse(subreddit, hot_list, after=after))
+        hot_list = titles(hot_posts, len(hot_posts))
+    else:
+        return None
+    return hot_list
+
+
+def titles(hot_list, length, titles_list=[]):
+    """
+    Gets titles of posts from the data
+    """
+    if length == 0:
+        return titles_list
+    titles_list.append(hot_list[length - 1]["data"]["title"])
+    return titles(hot_list, length - 1, titles_list)
